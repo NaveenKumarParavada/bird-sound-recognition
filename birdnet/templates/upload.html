@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI-Enhanced Acoustic Analysis for Comprehensive Biodiversity Monitoring and Assessment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        .upload-drop-zone {
+            height: 200px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        .upload-drop-zone:hover {
+            border-color: #0d6efd;
+            background: #f1f8ff;
+        }
+        .loading {
+            display: none;
+        }
+        .result-card {
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .confidence-bar {
+            height: 5px;
+            background: #198754;
+            transition: width 0.6s ease;
+        }
+        @keyframes fly {
+            0% { transform: translate(-100%, -20px) rotate(10deg); }
+            50% { transform: translate(50%, 20px) rotate(-10deg); }
+            100% { transform: translate(200%, -20px) rotate(10deg); }
+        }
+
+        .flying-bird {
+            position: absolute;
+            font-size: 2em;
+            color: #0d6efd;
+            animation: fly 8s linear infinite;
+        }
+
+        @keyframes wave {
+            0% { height: 10px; }
+            50% { height: 30px; }
+            100% { height: 10px; }
+        }
+
+        .sound-wave {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 3px;
+            height: 40px;
+            display: none;
+        }
+
+        .wave-bar {
+            width: 3px;
+            background: #0d6efd;
+            border-radius: 3px;
+            animation: wave 1s ease-in-out infinite;
+        }
+
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hover-chirp {
+            transition: all 0.3s ease;
+        }
+
+        .hover-chirp:hover {
+            transform: scale(1.02);
+            cursor: pointer;
+        }
+
+        .play-indicator {
+            display: none;
+            font-size: 0.8em;
+            color: #198754;
+            margin-left: 10px;
+        }
+        
+        .playing .play-indicator {
+            display: inline;
+        }
+
+        .waveform-container {
+            margin-top: 20px;
+        }
+
+        .birds-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .bird {
+            position: absolute;
+            color: #0d6efd;
+            opacity: 0;
+            animation: fly-across var(--duration) linear infinite;
+            animation-delay: var(--delay);
+        }
+
+        @keyframes fly-across {
+            0% {
+                transform: translate(-100px, var(--y)) rotate(10deg) scale(var(--scale));
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translate(calc(100vw + 100px), var(--y)) rotate(-10deg) scale(var(--scale));
+                opacity: 0;
+            }
+        }
+
+        /* Add to existing styles */
+
+        body {
+            background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            color: #2c3e50;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .upload-drop-zone {
+            background: rgba(255, 255, 255, 0.9);
+            border: 3px dashed #a8e6cf;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .upload-drop-zone:hover {
+            transform: translateY(-5px);
+            border-color: #66c2a4;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .result-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #66c2a4 0%, #41ae76 100%);
+            padding: 1rem;
+        }
+
+        .confidence-bar {
+            background: linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,255,255,0.6));
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        .wave-bar {
+            background: linear-gradient(180deg, #66c2a4, #41ae76);
+        }
+
+        .bird {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .waveform-container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+
+        /* Particle effect */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(-100vh) rotate(360deg); }
+        }
+
+        /* Add these new styles */
+
+        /* Enhanced 3D effects */
+        .result-card {
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .result-card:hover {
+            transform: translateY(-8px) scale(1.02) rotateX(5deg);
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.15),
+                0 0 20px rgba(102, 194, 164, 0.2);
+        }
+
+        /* Enhanced background */
+        body {
+            background: 
+                linear-gradient(135deg, #a8e6cf 0%, #dcedc1 100%),
+                url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.03)"/></svg>');
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        /* Glowing container */
+        .container {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 0 32px rgba(255, 255, 255, 0.2);
+            padding: 2rem;
+        }
+
+        /* Enhanced typography */
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            color: #2c3e50;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            letter-spacing: -1px;
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Enhanced waveform */
+        .waveform-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 
+                0 10px 20px rgba(0,0,0,0.08),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Enhanced loading animation */
+        .loading .wave-bar {
+            background: linear-gradient(180deg, #66c2a4, #41ae76);
+            box-shadow: 0 0 10px rgba(102, 194, 164, 0.5);
+        }
+
+        /* Enhanced particles */
+        .particle {
+            background: linear-gradient(45deg, rgba(255,255,255,0.5), rgba(255,255,255,0.2));
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        /* Enhanced upload zone */
+        .upload-drop-zone {
+            background: rgba(255, 255, 255, 0.95);
+            border: 3px dashed rgba(102, 194, 164, 0.5);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .upload-drop-zone:hover {
+            transform: translateY(-5px);
+            border-color: #66c2a4;
+            box-shadow: 
+                0 15px 30px rgba(0,0,0,0.1),
+                0 0 0 5px rgba(102, 194, 164, 0.1);
+        }
+
+        /* Flying birds enhancement */
+        .bird {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            opacity: 0.8;
+        }
+
+        .bird:hover {
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            opacity: 1;
+        }
+
+        /* Card content enhancement */
+        .card-body {
+            padding: 1.5rem;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.8));
+        }
+
+        .card-title {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+
+        /* Button enhancement */
+        .btn-primary {
+            background: linear-gradient(45deg, #66c2a4, #41ae76);
+            border: none;
+            box-shadow: 0 4px 15px rgba(102, 194, 164, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 194, 164, 0.4);
+            background: linear-gradient(45deg, #41ae76, #66c2a4);
+        }
+    </style>
+    <script src="https://unpkg.com/wavesurfer.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js/dist/plugin/wavesurfer.markers.min.js"></script>
+</head>
+<body class="bg-light">
+    <div class="particles" id="particles"></div>
+    <div class="container py-5">
+        <h1 class="text-center mb-5">AI-Enhanced Acoustic Analysis for Comprehensive Biodiversity Monitoring and Assessment</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    <div class="upload-drop-zone mb-4">
+                        <div class="normal-state">
+                            <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                            <h4>Drop your audio file here</h4>
+                            <p class="text-muted">or</p>
+                            <input type="file" name="file" accept=".mp3,.wav" class="form-control mb-3">
+                            <button type="submit" class="btn btn-primary">Analyze Sound</button>
+                        </div>
+                        <div class="loading">
+                            <div class="sound-wave">
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                                <div class="wave-bar"></div>
+                            </div>
+                            <p class="mt-2">Analyzing your audio...</p>
+                        </div>
+                    </div>
+                </form>
+
+                {% if results %}
+                <h3 class="mb-4">Detected Birds ({{ results|length }})</h3>
+                <div id="waveform" class="waveform-container"></div>
+                {% for result in results %}
+                <div class="result-card card hover-chirp">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <span>Confidence: {{ "%.2f"|format(result.confidence * 100) }}%</span>
+                        <div class="confidence-bar" style="width: {{ result.confidence * 100 }}%;"></div>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ result.common_name }}</h5>
+                        <p class="card-text">
+                            <strong>Scientific Name:</strong> <em>{{ result.scientific_name }}</em><br>
+                            <strong>Time:</strong> 
+                            <span class="timestamp-range">
+                                {{ "%.2f"|format(result.start_time) }}s - {{ "%.2f"|format(result.end_time) }}s
+                            </span>
+                            <span class="play-indicator">
+                                <i class="fas fa-volume-up"></i> Playing...
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flying-bird">
+        <i class="fas fa-dove"></i>
+    </div>
+
+    <div class="birds-container" id="birdsContainer"></div>
+
+    <audio id="audioPlayer" src="{{ url_for('uploaded_file', filename=audio_file) }}"></audio>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/your-font-awesome-kit.js"></script>
+    <script>
+        const audioPlayer = document.getElementById('audioPlayer');
+        let currentPlayingCard = null;
+
+        document.querySelectorAll('.result-card').forEach((card, index) => {
+            // Animation delay
+            card.style.animationDelay = `${index * 0.1}s`;
+            
+            // Get timestamps from the card
+            const timestampText = card.querySelector('.timestamp-range').textContent;
+            const [startTime, endTime] = timestampText.match(/\d+\.?\d*/g).map(Number);
+            
+            card.addEventListener('mouseenter', () => {
+                // Stop any currently playing audio
+                if (currentPlayingCard) {
+                    currentPlayingCard.classList.remove('playing');
+                }
+                
+                // Play the audio segment
+                audioPlayer.currentTime = startTime;
+                audioPlayer.play();
+                
+                // Set timeout to stop at end time
+                const duration = (endTime - startTime) * 1000; // Convert to milliseconds
+                card.classList.add('playing');
+                currentPlayingCard = card;
+                
+                setTimeout(() => {
+                    audioPlayer.pause();
+                    card.classList.remove('playing');
+                    currentPlayingCard = null;
+                }, duration);
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                audioPlayer.pause();
+                card.classList.remove('playing');
+                currentPlayingCard = null;
+            });
+        });
+
+        document.getElementById('uploadForm').onsubmit = function() {
+            document.querySelector('.normal-state').style.display = 'none';
+            document.querySelector('.loading').style.display = 'block';
+            document.querySelector('.sound-wave').style.display = 'flex';
+        };
+
+        // Initialize wavesurfer.js
+        const wavesurfer = WaveSurfer.create({
+            container: '#waveform',
+            waveColor: '#0d6efd',
+            progressColor: '#198754',
+            height: 128
+        });
+
+        wavesurfer.load(audioPlayer.src);
+
+        // Bird animation
+        function createBirds(count) {
+            const container = document.getElementById('birdsContainer');
+            const birdIcons = ['fa-dove', 'fa-crow', 'fa-kiwi-bird'];
+            
+            for (let i = 0; i < count; i++) {
+                const bird = document.createElement('i');
+                bird.className = `fas ${birdIcons[Math.floor(Math.random() * birdIcons.length)]} bird`;
+                
+                // Random properties
+                const scale = 0.5 + Math.random();
+                const y = Math.random() * 50;
+                const duration = 15 + Math.random() * 10;
+                const delay = Math.random() * 5;
+                
+                bird.style.setProperty('--scale', scale);
+                bird.style.setProperty('--y', `${y}px`);
+                bird.style.setProperty('--duration', `${duration}s`);
+                bird.style.setProperty('--delay', `${delay}s`);
+                
+                container.appendChild(bird);
+            }
+        }
+
+        // Create initial birds
+        createBirds(5);
+
+        // Add new birds periodically
+        setInterval(() => {
+            const container = document.getElementById('birdsContainer');
+            if (container.children.length < 8) {
+                createBirds(1);
+            }
+            
+            // Remove birds that have finished animation
+            Array.from(container.children).forEach(bird => {
+                const rect = bird.getBoundingClientRect();
+                if (rect.right < 0) {
+                    bird.remove();
+                }
+            });
+        }, 5000);
+
+        // Create particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 15 + 5;
+                const left = Math.random() * 100;
+                const delay = Math.random() * 20;
+                
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${left}%`;
+                particle.style.opacity = Math.random() * 0.5;
+                particle.style.animationDelay = `${delay}s`;
+                
+                container.appendChild(particle);
+            }
+        }
+
+        createParticles();
+
+        // Enhance wavesurfer
+        wavesurfer.setOptions({
+            waveColor: 'rgba(102, 194, 164, 0.4)',
+            progressColor: '#41ae76',
+            cursorColor: '#2c3e50',
+            cursorWidth: 2,
+            height: 100,
+            barWidth: 2,
+            barGap: 1,
+            barRadius: 2,
+            responsive: true,
+            normalize: true,
+            partialRender: true
+        });
+
+        // Add smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Enhanced particle effect
+        function createEnhancedParticles() {
+            const container = document.getElementById('particles');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 15 + 5;
+                const left = Math.random() * 100;
+                const delay = Math.random() * 20;
+                const duration = 15 + Math.random() * 15;
+                
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${left}%`;
+                particle.style.opacity = Math.random() * 0.5;
+                particle.style.animationDelay = `${delay}s`;
+                particle.style.animationDuration = `${duration}s`;
+                
+                container.appendChild(particle);
+            }
+        }
+
+        createEnhancedParticles();
+        setInterval(createEnhancedParticles, 30000);
+    </script>
+</body>
+</html>
